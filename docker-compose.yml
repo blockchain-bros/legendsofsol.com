@@ -1,0 +1,35 @@
+version: '3.1'
+
+services:
+
+  # legends:
+  #   restart: always
+  #   container_name: legends_app_1
+  #   image: sosol/p1:latest
+  #   build:
+  #     context: .
+  #   environment:
+  #     - NODE_ENV=development
+  #   # depends_on:
+  #   #   - postgres
+  #   volumes:
+  #     - .:/app/
+  #     - /app/node_modules
+  #   ports:
+  #     - 3000:3000
+  #   command: yarn dev
+  #   env_file: .env.prod
+
+  postgres:
+    image: postgres:15.4
+    container_name: legends_postgres_1
+    ports:
+      - 5432:5432
+    volumes:
+      - .pgdata/db:/var/lib/postgresql
+      - .pgdata/db/init:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: legends_dev
+    restart: unless-stopped
+

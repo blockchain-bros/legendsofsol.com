@@ -1,0 +1,36 @@
+{
+  "name": "Number #0000",
+  "symbol": "CHOOSE",
+  "description": "Congratulations, you have chosen the Blue Pill. In the coming weeks this will give you access to the most based group of people in the upcoming Bull market. Check the attributes for a hint at what this token gives you access to.",
+  "seller_fee_basis_points": 690,
+  "image": "0.png",
+  "attributes": [
+    {
+      "trait_type": "Your Choice",
+      "value": "Legendary"
+    },
+    {
+      "trait_type": "NFT Type",
+      "value": "Whitelist"
+    },
+    {
+      "trait_type": "Partner Tools",
+      "value": "95% complete"
+    },
+    {
+      "trait_type": "Sentiment Analysis",
+      "value": "Bullish"
+    },
+    {
+      "trait_type": "Community",
+      "value": "Based AF"
+    },
+    {
+      "trait_type": "HARKL DAO",
+      "value": "Loading"
+    }
+  ],
+  "properties": {
+    "files": []
+  }
+}

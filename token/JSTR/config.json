@@ -1,0 +1,46 @@
+{
+  "tokenStandard": "pnft",
+  "number": 4200,
+  "symbol": "CHOOSE",
+  "sellerFeeBasisPoints": 690,
+  "isMutable": true,
+  "isSequential": false,
+  "ruleSet": null,
+  "creators": [
+    {
+      "address": "harkLSUe2Puud2TVQUhHW4vs45mF1YMLU3PThPCuWd8",
+      "share": 100
+    }
+  ],
+  "hiddenSettings": null,
+  "uploadMethod": "bundlr",
+  "awsConfig": null,
+  "nftStorageAuthToken": null,
+  "shdwStorageAccount": null,
+  "pinataConfig": null,
+  "sdriveApiKey": null,
+  "batchSize": 5000,
+  "guards": {
+    "default": {
+      "botTax": {
+        "value": 0.01,
+        "lastInstruction": true
+      }
+    },
+    "groups": [
+      {
+        "label": "Public",
+        "guards": {
+          "startDate": {
+            "date": "2024-02-10T12:00:00.000+13:00"
+          },
+          "tokenPayment": {
+            "amount": 69420000000000,
+            "mint": "LGNDeXXXaDDeRerwwHfUtPBNz5s6vrn1NMSt9hdaCwx",
+            "destinationAta": "8Jq6Do6H5y5uEgAsZzefXXfT7Tw72tzs5wFSLzGpsDvE"
+          }
+        }
+      }
+    ]
+  }
+}
