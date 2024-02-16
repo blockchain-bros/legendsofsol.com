@@ -1,14 +1,12 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import prisma from "../../../../lib/prisma";
 import { determineRank } from "../../../utils";
-import { transferChecked } from "@solana/spl-token";
+import { getAssociatedTokenAddress, transferChecked } from "@solana/spl-token";
+import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import {
-  Connection,
-  Keypair,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-} from "@solana/web3.js";
-import { checkTxLEGEND } from "../../../utils/backend";
+  checkTxLEGEND,
+  createConnectionWithRetry,
+} from "../../../utils/backend";
 
 interface RankResult {
   rank: number | null;
@@ -19,23 +17,29 @@ export default async function handler(
   res: NextApiResponse<any>
 ) {
   if (req.method === "POST") {
-    const { publicKey, associatedToken } = req.body;
-    if (!publicKey || !associatedToken) {
+    const { publicKey } = req.body;
+    if (!publicKey) {
       return res.status(400).json({ message: "Invalid request" });
     }
     const sourceAcc = new PublicKey(
       "7hiTK61423CjMoZRmK5s25wLgyeyxPHFRuCWdNdqry6c"
     ); // payment $LEGEND account
 
-    const connection = new Connection(
-      process.env.NEXT_PUBLIC_SOLANA_NETWORK!,
-      "confirmed"
-    );
+    const TOKEN = String(process.env.NEXT_PUBLIC_LEGEND_TOKEN!);
+    const mint = new PublicKey(TOKEN);
 
     try {
+      const connection = await createConnectionWithRetry(
+        process.env.NEXT_PUBLIC_SOLANA_NETWORK!
+      );
+      const associatedToken = await getAssociatedTokenAddress(
+        mint,
+        new PublicKey(publicKey)
+      );
       const existingAccountInfo = await connection.getAccountInfo(
         new PublicKey(associatedToken)
       );
+
       if (!existingAccountInfo)
         res.status(400).json({ message: "No token account found" });
       const partnerPayment = await prisma.partnerScore.findFirst({
@@ -51,7 +55,7 @@ export default async function handler(
       });
       // NB return if payment claimed
       if (partnerPayment?.claimed || legendPayment?.claimed)
-        res.status(200).json({ success: "true" });
+        res.status(200).json({ status: "claimed" });
       // Use parameterized query for safety
       const rank = await prisma.$queryRaw<RankResult[]>`
           SELECT COUNT(*) + 1 AS rank 
@@ -66,8 +70,8 @@ export default async function handler(
         return res.status(404).json({ message: "Score not found" });
       }
       const rankPayment = determineRank(rank[0].rank || 0);
-      const total = partnerPayment.total + rankPayment;
-      // const total = 2;
+      // const total = partnerPayment.total + rankPayment;
+      const total = 1;
 
       const keys = JSON.parse(process.env.NEXT_DROP!);
       const keysUint8Array = new Uint8Array(keys);
@@ -89,9 +93,9 @@ export default async function handler(
       //  Validate transaction
       const success = await checkTxLEGEND(signature);
       const totalBigInt = BigInt(total);
-      const updatedLegend = BigInt(success.legend) + totalBigInt;      
+      const updatedLegend = BigInt(success.legend) + totalBigInt;
       if (updatedLegend !== BigInt(0)) {
-        res.status(400).json({ message: "Transaction failed" });
+        return res.status(400).json({ message: "Transaction failed" });
       }
       // console.log(partnerPayment.id, legendPayment?.id);
 

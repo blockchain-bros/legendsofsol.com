@@ -99,8 +99,7 @@ const LegendScoreChecker: React.FC<{
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          publicKey,
-          associatedToken: associatedToken.toBase58(),
+          publicKey
         }),
       });
       if (claim.ok) {

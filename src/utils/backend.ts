@@ -1,6 +1,5 @@
-import { mapValues } from "lodash";
 import prisma from "../../lib/prisma";
-import { Connection } from "@solana/web3.js";
+import { Commitment, Connection } from "@solana/web3.js";
 
 const generateXTXIDString = (length: number): string => {
   let result = "";
@@ -101,13 +100,16 @@ export const getCluster = () => {
 export const serializedBigIntValues = (obj: any): any => {
   if (Array.isArray(obj)) {
     return obj.map(serializedBigIntValues);
-  } else if (obj !== null && typeof obj === 'object') {
+  } else if (obj !== null && typeof obj === "object") {
     return Object.fromEntries(
-      Object.entries(obj).map(([key, value]) => [key, serializedBigIntValues(value)])
+      Object.entries(obj).map(([key, value]) => [
+        key,
+        serializedBigIntValues(value),
+      ])
     );
-  } else if (typeof obj === 'bigint') {
+  } else if (typeof obj === "bigint") {
     return parseFloat((Number(obj) / 1e9).toFixed(2));
-  } else if (typeof obj === 'number') {
+  } else if (typeof obj === "number") {
     return parseFloat(obj.toFixed(2));
   }
   return obj;
@@ -117,37 +119,66 @@ export function sanitizeStringForDb(inputString: string): string {
   // List of characters to be removed or replaced
   const unsafeChars = /['"\\%_;]/g;
   // Replace unsafe characters with an empty string
-  return inputString.replace(unsafeChars, '');
+  return inputString.replace(unsafeChars, "");
 }
 
 export async function checkTxLEGEND(tx: string) {
-  const connection = new Connection(
-    process.env.NEXT_PUBLIC_SOLANA_NETWORK!,
-    "confirmed"
+  const connection = await createConnectionWithRetry(
+    process.env.NEXT_PUBLIC_SOLANA_NETWORK!
   );
-  const getTx = await connection.getTransaction(
-    tx,
-    {
-      maxSupportedTransactionVersion: 0,
-    },
-  );
-  if (!getTx || !getTx.meta || !getTx.meta.preTokenBalances || !getTx.meta.postTokenBalances) {
+  const getTx = await connection.getTransaction(tx, {
+    maxSupportedTransactionVersion: 0,
+  });
+  if (
+    !getTx ||
+    !getTx.meta ||
+    !getTx.meta.preTokenBalances ||
+    !getTx.meta.postTokenBalances
+  ) {
     throw new Error("Transaction or metadata not found");
   }
-  console.log("getTx", getTx);
+  // console.log("getTx", getTx);
   const mint = getTx.meta.preTokenBalances[0].mint;
   //paid for with LEGEND
   if (mint === process.env.NEXT_PUBLIC_LEGEND_TOKEN!) {
     const decimals = getTx.meta.preTokenBalances[0].uiTokenAmount.decimals;
     let transferAmount =
-      BigInt(getTx.meta.postTokenBalances[0]?.uiTokenAmount.amount || '0') -
-      BigInt(getTx.meta.preTokenBalances[0]?.uiTokenAmount.amount || '0');
+      BigInt(getTx.meta.postTokenBalances[0]?.uiTokenAmount.amount || "0") -
+      BigInt(getTx.meta.preTokenBalances[0]?.uiTokenAmount.amount || "0");
     let legend = transferAmount / BigInt(Math.pow(10, decimals));
 
     return {
       mint,
-      legend
-    }
+      legend,
+    };
   }
   throw new Error("Wrong token (not LEGEND or USDC) (got " + mint + ")");
 }
+
+export const createConnectionWithRetry = async (
+  network: string,
+  commitment: Commitment = "confirmed",
+  retries: number = 5,
+  delay: number = 1000
+): Promise<Connection> => {
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  for (let i = 0; i < retries; i++) {
+    try {
+      const connection = new Connection(network, commitment);
+      await connection.getRecentBlockhash();
+      return connection;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("429")) {
+        // If a 429 error is caught, log it and wait for the exponential backoff delay
+        console.log(`Retrying due to 429 Too Many Requests: Attempt ${i + 1}`);
+        await sleep(delay * Math.pow(2, i)); // Exponential backoff
+      } else {
+        // If the error is not 429, rethrow it
+        throw error;
+      }
+    }
+  }
+  throw new Error(
+    "Failed to create Solana connection after maximum retries due to 429 Too Many Requests"
+  );
+};

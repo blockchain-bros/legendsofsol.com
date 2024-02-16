@@ -39,6 +39,7 @@ import { DigitalAssetWithToken } from "@metaplex-foundation/mpl-token-metadata";
 import { checkAtaValid } from "./validateConfig";
 import { Connection, PublicKey, PublicKeyInitData } from "@solana/web3.js";
 import { debounce } from "lodash";
+import { createConnectionWithRetry } from "../backend";
 
 const SOLANA_TOKEN = "So11111111111111111111111111111111111111112";
 
@@ -102,7 +103,7 @@ export const guardChecker = async (
     checkAtaValid(umi, guardsToCheck);
   }
 
-  let solBalance: SolAmount = sol(0); 
+  let solBalance: SolAmount = sol(0);
   if (checkSolBalanceRequired(guardsToCheck)) {
     try {
       // Wrap your balance fetching logic in a function
@@ -110,7 +111,7 @@ export const guardChecker = async (
         try {
           const account = await umi.rpc.getAccount(umi.identity.publicKey);
           if (!account || solBalance === sol(0)) {
-            const connection = new Connection(
+            const connection = await createConnectionWithRetry(
               process.env.NEXT_PUBLIC_SOLANA_NETWORK!,
               "finalized"
             );
