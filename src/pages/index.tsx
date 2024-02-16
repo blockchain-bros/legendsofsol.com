@@ -138,27 +138,6 @@ function CustomTabPanel({
   );
 }
 
-function CustomTab({
-  icon,
-  label,
-}: {
-  icon: React.ReactElement;
-  label: string;
-}) {
-  return (
-    <Tab
-      icon={icon}
-      aria-label={label}
-      sx={{
-        "&.MuiTab-root": {
-          backgroundColor: (theme) => theme.palette.background?.paper,
-          border: (theme) => `2px solid ${theme.palette.divider}`,
-        },
-      }}
-    />
-  );
-}
-
 export default function CM() {
   const umi = useUmi();
   const solanaTime = useSolanaTime();
@@ -188,6 +167,7 @@ export default function CM() {
     console.error("No candy machine in .env!");
     enqueueSnackbar("No candy machine in .env!");
   }
+
   const candyMachineId: PublicKey = useMemo(() => {
     if (process.env.NEXT_PUBLIC_CANDY_MACHINE_ID) {
       return publicKey(process.env.NEXT_PUBLIC_CANDY_MACHINE_ID);
@@ -196,8 +176,8 @@ export default function CM() {
       enqueueSnackbar("NO CANDY MACHINE IN .env FILE DEFINED!");
       return publicKey("11111111111111111111111111111111");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   const { candyMachine, candyGuard } = useCandyMachine(
     umi,
     candyMachineId,
@@ -207,13 +187,12 @@ export default function CM() {
     setFirstRun
   );
 
-  useEffect(() => {
-    const checkEligibilityFunc = async () => {
-      if (!candyMachine || !candyGuard || !checkEligibility || isShowNftOpen) {
-        return;
-      }
+  const checkEligibilityAndUpdateState = async () => {
+    if (!candyMachine || !candyGuard || !checkEligibility || isShowNftOpen) {
+      return;
+    }
+    try {
       setFirstRun(false);
-
       const { guardReturn, ownedTokens } = await guardChecker(
         umi,
         candyGuard,
@@ -223,34 +202,23 @@ export default function CM() {
 
       setOwnedTokens(ownedTokens);
       setGuards(guardReturn);
-      setIsAllowed(false);
 
-      let allowed = false;
-      for (const guard of guardReturn) {
-        if (!guard.allowed) {
-          enqueueSnackbar(guard.reason as string);
-        }
-        if (guard.allowed) {
-          allowed = true;
-          break;
-        }
-      }
-
+      const allowed = guardReturn.some((guard) => guard.allowed);
       setIsAllowed(allowed);
+    } catch (error) {
+      console.error("Failed to check eligibility:", error);
+      enqueueSnackbar("Failed to check eligibility");
+    } finally {
       setLoading(false);
-    };
+    }
+  };
 
-    // Debounce the function
-    const debouncedCheck = debounce(checkEligibilityFunc, 1000);
-
+  useEffect(() => {
+    const debouncedCheck = debounce(checkEligibilityAndUpdateState, 1000);
     debouncedCheck();
-
-    // Cleanup function to cancel the debounced call if the component unmounts
     return () => {
       debouncedCheck.cancel();
     };
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [umi, checkEligibility, firstRun]);
 
   const PageContent = () => {
